@@ -10,6 +10,20 @@
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 font-sans pb-28">
+    <!-- ตรวจสอบสิทธิ์การล็อกอินทันทีที่เปิดหน้าเว็บ -->
+    <script>
+        fetch('/api/current-user')
+            .then(res => res.json())
+            .then(data => {
+                if (!data.loggedIn) {
+                    window.location.href = '/login.html';
+                }
+            })
+            .catch(() => {
+                window.location.href = '/login.html';
+            });
+    </script>
+
     <div id="toast-container" class="fixed top-6 right-6 z-50 space-y-2 pointer-events-none"></div>
 
     <div class="max-w-5xl mx-auto space-y-4 animate-fade-in">
@@ -23,7 +37,7 @@
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                
+                <button onclick="logout()" class="bg-rose-600 hover:bg-rose-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition">ออกจากระบบ</button>
             </div>
         </div>
 
@@ -183,35 +197,39 @@
         }
 
         async function loadState() {
-            const res = await fetch('/api/state');
-            const data = await res.json();
-            
-            const sel = document.getElementById('sel-member');
-            sel.innerHTML = '';
-            if(data.members && data.members.length > 0) {
-                data.members.forEach(m => {
-                    sel.innerHTML += `<option value="${m.id}">${m.username} (กระเป๋า: ${parseFloat(m.balance).toLocaleString()} ฿)</option>`;
-                });
-            } else {
-                sel.innerHTML = `<option value="">ยังไม่มีบัญชีสมาชิก</option>`;
-            }
+            try {
+                const res = await fetch('/api/state');
+                const data = await res.json();
+                
+                const sel = document.getElementById('sel-member');
+                sel.innerHTML = '';
+                if(data.members && data.members.length > 0) {
+                    data.members.forEach(m => {
+                        sel.innerHTML += `<option value="${m.id}">${m.username} (กระเป๋า: ${parseFloat(m.balance || 0).toLocaleString()} ฿)</option>`;
+                    });
+                } else {
+                    sel.innerHTML = `<option value="">ยังไม่มีบัญชีสมาชิก</option>`;
+                }
 
-            const resBox = document.getElementById('results-archive');
-            resBox.innerHTML = '';
-            if(!data.results || data.results.length === 0) {
-                resBox.innerHTML = '<div class="text-slate-500">ยังไม่มีประวัติผลรางวัล</div>';
-            } else {
-                data.results.forEach(r => {
-                    resBox.innerHTML += `
-                        <div class="bg-slate-900 p-3 rounded-xl border border-slate-700 flex justify-between items-center">
-                            <div>
-                                <span class="text-amber-400 font-bold">งวดวันที่: ${new Date(r.draw_date).toLocaleDateString()}</span>
-                                <p class="text-cyan-300 mt-1">4 ตัว: <strong class="text-white">${r.prize_4d}</strong> | 3 ตัว: <strong class="text-white">${r.prize_3d}</strong> | 2 ตัว: <strong class="text-white">${r.prize_2d}</strong></p>
+                const resBox = document.getElementById('results-archive');
+                resBox.innerHTML = '';
+                if(!data.results || data.results.length === 0) {
+                    resBox.innerHTML = '<div class="text-slate-500">ยังไม่มีประวัติผลรางวัล</div>';
+                } else {
+                    data.results.forEach(r => {
+                        resBox.innerHTML += `
+                            <div class="bg-slate-900 p-3 rounded-xl border border-slate-700 flex justify-between items-center">
+                                <div>
+                                    <span class="text-amber-400 font-bold">งวดวันที่: ${new Date(r.draw_date).toLocaleDateString()}</span>
+                                    <p class="text-cyan-300 mt-1">4 ตัว: <strong class="text-white">${r.prize_4d}</strong> | 3 ตัว: <strong class="text-white">${r.prize_3d}</strong> | 2 ตัว: <strong class="text-white">${r.prize_2d}</strong></p>
+                                </div>
+                                <button onclick="shareResult('${r.prize_4d}', '${r.prize_3d}', '${r.prize_2d}')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold">📤 แชร์ผลรางวัล</button>
                             </div>
-                            <button onclick="shareResult('${r.prize_4d}', '${r.prize_3d}', '${r.prize_2d}')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold">📤 แชร์ผลรางวัล</button>
-                        </div>
-                    `;
-                });
+                        `;
+                    });
+                }
+            } catch (err) {
+                console.error('Error loading state:', err);
             }
         }
         loadState();
@@ -346,9 +364,19 @@
         }
 
         function shareResult(r4, r3, r2) {
-            const text = `🎉 ผลรางวัลหวยลาว VIP\n- 4 ตัว: ${r4}\n- 3 ตัว: ${r3}\n- 2 ตัว: ${r2}\nแทงง่าย จ่ายจริงที่ borndee!`;
+            const text = `🎉 ผลรางวัลหวยลาว VIP\n4 ตัว: ${r4}\n3 ตัว: ${r3}\n2 ตัว: ${r2}\nแทงง่าย จ่ายจริงที่ borndee!`;
             navigator.clipboard.writeText(text);
             showToast('คัดลอกผลรางวัลสำหรับแชร์เรียบร้อย!');
+        }
+
+        function logout() {
+            fetch('/api/logout', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if(data.success) {
+                        window.location.href = data.redirectTo;
+                    }
+                });
         }
 
         function toggleChat() {
