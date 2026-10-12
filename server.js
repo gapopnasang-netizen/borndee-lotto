@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const http = require('http');
 const { Server } = require('socket.io');
+const session = require('express-session');
 require('dotenv').config();
 
 const app = express();
@@ -13,6 +14,14 @@ const io = new Server(server, { cors: { origin: "*" } });
 app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ตั้งค่า Session
+app.use(session({
+    secret: 'borndee-lotto-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false } // เปลี่ยนเป็น true ถ้าใช้งานผ่าน HTTPS สมบูรณ์บน Production
+}));
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -47,13 +56,105 @@ function expandBetNumbers(type, number) {
     return results;
 }
 
-// Routes
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-app.get('/agent', (req, res) => res.sendFile(path.join(__dirname, 'public', 'agent.html')));
-app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
-app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
+// ==========================================
+// MIDDLEWARE ตรวจสอบสิทธิ์ (Auth & Roles)
+// ==========================================
 
-// API: ดึงข้อมูลภาพรวมระบบทั้งหมด + งบการเงิน Win/Loss
+function requireAuth(req, res, next) {
+    if (!req.session || !req.session.user) {
+        return res.redirect('/login.html');
+    }
+    next();
+}
+
+function requireRole(roles) {
+    return (req, res, next) => {
+        if (!req.session || !req.session.user) {
+            return res.redirect('/login.html');
+        }
+        if (!roles.includes(req.session.user.role)) {
+            return res.status(403).send('<h2>403 Forbidden: คุณไม่มีสิทธิ์เข้าถึงหน้านี้ (สิทธิ์ไม่ถึง)</h2><a href="/">กลับหน้าหลัก</a>');
+        }
+        next();
+    };
+}
+
+// ==========================================
+// ROUTES (หน้าเว็บหลัก & ป้องกันสิทธิ์)
+// ==========================================
+
+app.get('/', requireAuth, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/agent', requireRole(['agent', 'admin']), (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'agent.html'));
+});
+
+app.get('/admin', requireRole(['admin']), (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+app.get('/login.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+// ==========================================
+// API ENDPOINTS: AUTHENTICATION
+// ==========================================
+
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const { rows, error } = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+        if (error || rows.length === 0) {
+            return res.status(401).json({ success: false, message: 'ไม่พบชื่อผู้ใช้นี้ในระบบ' });
+        }
+
+        const user = rows[0];
+        if (user.password !== password) {
+            return res.status(401).json({ success: false, message: 'รหัสผ่านไม่ถูกต้อง' });
+        }
+
+        req.session.user = {
+            id: user.id,
+            username: user.username,
+            role: user.role || 'member'
+        };
+
+        let redirectTo = '/';
+        if (user.role === 'admin') redirectTo = '/admin';
+        else if (user.role === 'agent') redirectTo = '/agent';
+
+        res.json({ success: true, redirectTo });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post('/api/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) return res.status(500).json({ success: false, message: 'ออกจากระบบไม่สำเร็จ' });
+        res.clearCookie('connect.sid');
+        res.json({ success: true, redirectTo: '/login.html' });
+    });
+});
+
+app.get('/api/current-user', (req, res) => {
+    if (!req.session || !req.session.user) {
+        return res.status(401).json({ loggedIn: false });
+    }
+    res.json({ loggedIn: true, user: req.session.user });
+});
+
+// ==========================================
+// API ENDPOINTS: SYSTEM & LOTTERY
+// ==========================================
+
 app.get('/api/state', async (req, res) => {
     try {
         const membersRes = await pool.query('SELECT * FROM members ORDER BY id DESC');
@@ -87,11 +188,9 @@ app.get('/api/state', async (req, res) => {
     }
 });
 
-// API: ส่งโพยหวย (พร้อมเช็คเลขอั้น/เลขเต็ม และวงเงินสูงสุด)
 app.post('/api/member/bet', async (req, res) => {
     const { memberId, betType, number, amount } = req.body;
     try {
-        // เช็คเลขอั้น
         const blockedCheck = await pool.query('SELECT * FROM blocked_numbers WHERE number = $1', [number]);
         if (blockedCheck.rows.length > 0) {
             const rule = blockedCheck.rows[0];
@@ -100,7 +199,6 @@ app.post('/api/member/bet', async (req, res) => {
             }
         }
 
-        // เช็ควงเงินรับแทงสูงสุดต่อเลข
         const maxLimitRes = await pool.query("SELECT setting_value FROM system_settings WHERE setting_key = 'max_bet_per_num'");
         const maxLimit = maxLimitRes.rows.length > 0 ? parseFloat(maxLimitRes.rows[0].setting_value) : 2000;
         if (parseFloat(amount) > maxLimit) {
@@ -133,7 +231,6 @@ app.post('/api/member/bet', async (req, res) => {
     }
 });
 
-// API: ดึงข้อมูลหน้าแอดมินทั้งหมด
 app.get('/api/admin/all-data', async (req, res) => {
     try {
         const txRes = await pool.query('SELECT * FROM transactions ORDER BY id DESC LIMIT 20');
@@ -160,7 +257,6 @@ app.get('/api/admin/all-data', async (req, res) => {
     }
 });
 
-// API: จัดการบัญชีธนาคาร (เพิ่ม/เปิด-ปิด)
 app.post('/api/admin/add-bank', async (req, res) => {
     const { bankName, accountNumber, accountName } = req.body;
     try {
@@ -174,7 +270,6 @@ app.post('/api/admin/add-bank', async (req, res) => {
     }
 });
 
-// API: บันทึกตั้งค่าอัตราจ่าย & วงเงินสูงสุด
 app.post('/api/admin/save-settings', async (req, res) => {
     const { rate3d, rate2d, maxBet } = req.body;
     try {
@@ -188,7 +283,6 @@ app.post('/api/admin/save-settings', async (req, res) => {
     }
 });
 
-// API: เปิด-ปิดสถานะรับแทงหวย
 app.post('/api/admin/toggle-lottery', async (req, res) => {
     const { isOpen } = req.body;
     try {
@@ -199,7 +293,6 @@ app.post('/api/admin/toggle-lottery', async (req, res) => {
     }
 });
 
-// API: จัดการฝาก-ถอน
 app.post('/api/admin/handle-tx', async (req, res) => {
     const { txId, action } = req.body;
     try {
@@ -222,7 +315,6 @@ app.post('/api/admin/handle-tx', async (req, res) => {
     }
 });
 
-// API: ตั้งค่าเลขอั้น
 app.post('/api/admin/block-number', async (req, res) => {
     const { number, restrictionType } = req.body;
     try {
@@ -233,7 +325,6 @@ app.post('/api/admin/block-number', async (req, res) => {
     }
 });
 
-// API: ออกผลรางวัลออโต้
 app.post('/api/admin/auto-draw', async (req, res) => {
     try {
         const r4 = Math.floor(1000 + Math.random() * 9000).toString();
@@ -245,7 +336,6 @@ app.post('/api/admin/auto-draw', async (req, res) => {
             [r4, r3, r2]
         );
 
-        // ดึงอัตราจ่ายปัจจุบันจากฐานข้อมูล
         const rate3Res = await pool.query("SELECT setting_value FROM system_settings WHERE setting_key = 'rate_3d'");
         const rate2Res = await pool.query("SELECT setting_value FROM system_settings WHERE setting_key = 'rate_2d'");
         const rate3d = rate3Res.rows.length > 0 ? parseFloat(rate3Res.rows[0].setting_value) : 850;
@@ -281,7 +371,6 @@ app.post('/api/admin/auto-draw', async (req, res) => {
     }
 });
 
-// API: แจกคืนยอดเสีย
 app.post('/api/admin/give-cashback', async (req, res) => {
     try {
         await pool.query(`
@@ -295,7 +384,6 @@ app.post('/api/admin/give-cashback', async (req, res) => {
     }
 });
 
-// API: ประกาศหน้าเว็บ
 app.post('/api/admin/announcement', async (req, res) => {
     const { message } = req.body;
     try {
@@ -306,7 +394,6 @@ app.post('/api/admin/announcement', async (req, res) => {
     }
 });
 
-// API: ยกเลิกโพย
 app.post('/api/admin/cancel-bet', async (req, res) => {
     const { betId } = req.body;
     try {
