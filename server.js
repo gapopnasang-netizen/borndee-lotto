@@ -60,7 +60,6 @@ function expandBetNumbers(type, number) {
 // MIDDLEWARE ตรวจสอบสิทธิ์ (Auth & Roles)
 // ==========================================
 
-// บังคับว่าต้อง Login แล้วเท่านั้น (ถ้ายังไม่ล็อกอิน ดีดไปหน้า /login.html ทันที)
 function requireAuth(req, res, next) {
     if (!req.session || !req.session.user) {
         return res.redirect('/login.html');
@@ -68,7 +67,6 @@ function requireAuth(req, res, next) {
     next();
 }
 
-// ตรวจสอบยศ (Role-Based Access Control)
 function requireRole(roles) {
     return (req, res, next) => {
         if (!req.session || !req.session.user) {
@@ -85,22 +83,18 @@ function requireRole(roles) {
 // ROUTES & SECURITY (เส้นทางหน้าเว็บ)
 // ==========================================
 
-// หน้าแรก (บังคับ Login: ถ้ายังไม่ล็อกอินจะเด้งไป /login.html ทันที)
 app.get('/', requireAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// หน้า Agent (เฉพาะยศ agent และ admin เท่านั้น)
 app.get('/agent', requireRole(['agent', 'admin']), (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'agent.html'));
 });
 
-// หน้า Admin (เฉพาะยศ admin เท่านั้น)
 app.get('/admin', requireRole(['admin']), (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// หน้า Login (เปิดให้เข้าได้อิสระ)
 app.get('/login.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
@@ -126,14 +120,12 @@ app.post('/api/login', async (req, res) => {
             return res.status(401).json({ success: false, message: 'รหัสผ่านไม่ถูกต้อง' });
         }
 
-        // บันทึกข้อมูลลง Session รวมถึง role (ยศ)
         req.session.user = {
             id: user.id,
             username: user.username,
-            role: user.role || 'member' // ถ้าไม่มีค่า ให้ตั้งต้นเป็น member
+            role: user.role || 'member'
         };
 
-        // กำหนดหน้าที่จะพาไปหลังล็อกอินสำเร็จตามยศ
         let redirectTo = '/';
         if (user.role === 'admin') {
             redirectTo = '/admin';
@@ -147,7 +139,6 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// API ออกจากระบบ (Logout)
 app.post('/api/logout', (req, res) => {
     req.session.destroy((err) => {
         if (err) return res.status(500).json({ success: false, message: 'ออกจากระบบไม่สำเร็จ' });
@@ -156,7 +147,6 @@ app.post('/api/logout', (req, res) => {
     });
 });
 
-// API เช็คข้อมูล User ปัจจุบัน
 app.get('/api/current-user', (req, res) => {
     if (!req.session || !req.session.user) {
         return res.status(401).json({ loggedIn: false });
@@ -165,12 +155,13 @@ app.get('/api/current-user', (req, res) => {
 });
 
 // ==========================================
-// API ENDPOINTS: SYSTEM & LOTTERY (ระบบเดิมทั้งหมด)
+// API ENDPOINTS: SYSTEM & LOTTERY
 // ==========================================
 
 app.get('/api/state', async (req, res) => {
     try {
-        const membersRes = await pool.query('SELECT * FROM members ORDER BY id DESC');
+        // ดึงข้อมูลสมาชิกจากตาราง users (รองรับทั้งฟิลด์ balance และยศ)
+        const membersRes = await pool.query('SELECT id, username, COALESCE(balance, 0) as balance, role FROM users ORDER BY id DESC');
         const betsRes = await pool.query('SELECT * FROM bets ORDER BY id DESC LIMIT 50');
         const statusRes = await pool.query('SELECT * FROM lottery_status LIMIT 1');
         const resultsRes = await pool.query('SELECT * FROM lottery_results ORDER BY id DESC LIMIT 5');
@@ -218,19 +209,19 @@ app.post('/api/member/bet', async (req, res) => {
             return res.status(400).json({ success: false, message: `จำกัดยอดแทงสูงสุดไม่เกิน ${maxLimit.toLocaleString()} ฿ ต่อรายการ` });
         }
 
-        const memberRes = await pool.query('SELECT * FROM members WHERE id = $1', [memberId]);
+        const memberRes = await pool.query('SELECT * FROM users WHERE id = $1', [memberId]);
         if (memberRes.rows.length === 0) return res.status(404).json({ success: false, message: 'ไม่พบสมาชิก' });
         
         const member = memberRes.rows[0];
         const expandedNumbers = expandBetNumbers(betType, number);
         let totalAmount = expandedNumbers.length * parseFloat(amount);
 
-        if (parseFloat(member.balance) < totalAmount) {
+        if (parseFloat(member.balance || 0) < totalAmount) {
             return res.status(400).json({ success: false, message: 'ยอดเงินในกระเป๋าไม่พอ' });
         }
 
-        const newBalance = parseFloat(member.balance) - totalAmount;
-        await pool.query('UPDATE members SET balance = $1 WHERE id = $2', [newBalance, memberId]);
+        const newBalance = parseFloat(member.balance || 0) - totalAmount;
+        await pool.query('UPDATE users SET balance = $1 WHERE id = $2', [newBalance, memberId]);
 
         let details = expandedNumbers.map(n => ({ number: n, price: parseFloat(amount) }));
         const betInsert = await pool.query(
@@ -248,7 +239,7 @@ app.get('/api/admin/all-data', async (req, res) => {
     try {
         const txRes = await pool.query('SELECT * FROM transactions ORDER BY id DESC LIMIT 20');
         const allBetsRes = await pool.query('SELECT * FROM bets ORDER BY id DESC LIMIT 50');
-        const agentsRes = await pool.query('SELECT * FROM members WHERE balance > 0 ORDER BY balance DESC');
+        const agentsRes = await pool.query('SELECT * FROM users WHERE balance > 0 ORDER BY balance DESC');
         const announcementsRes = await pool.query('SELECT * FROM announcements ORDER BY id DESC LIMIT 5');
         const banksRes = await pool.query('SELECT * FROM bank_accounts ORDER BY id DESC');
         const settingsRes = await pool.query('SELECT * FROM system_settings');
@@ -315,7 +306,7 @@ app.post('/api/admin/handle-tx', async (req, res) => {
 
         if (action === 'อนุมัติ' && tx.status === 'รออนุมัติ') {
             if (tx.type === 'ฝากเงิน') {
-                await pool.query('UPDATE members SET balance = balance + $1 WHERE username = $2', [tx.amount, tx.username]);
+                await pool.query('UPDATE users SET balance = COALESCE(balance, 0) + $1 WHERE username = $2', [tx.amount, tx.username]);
             }
             await pool.query('UPDATE transactions SET status = $1 WHERE id = $2', ['อนุมัติแล้ว', txId]);
         } else {
@@ -372,7 +363,7 @@ app.post('/api/admin/auto-draw', async (req, res) => {
 
             if (won) {
                 await pool.query("UPDATE bets SET status = 'ถูกรางวัล', payout_amount = $1 WHERE id = $2", [payout, bet.id]);
-                await pool.query("UPDATE members SET balance = balance + $1 WHERE username = $2", [payout, bet.member_username]);
+                await pool.query("UPDATE users SET balance = COALESCE(balance, 0) + $1 WHERE username = $2", [payout, bet.member_username]);
             } else {
                 await pool.query("UPDATE bets SET status = 'ไม่ถูกรางวัล', payout_amount = 0 WHERE id = $1", [bet.id]);
             }
@@ -387,8 +378,8 @@ app.post('/api/admin/auto-draw', async (req, res) => {
 app.post('/api/admin/give-cashback', async (req, res) => {
     try {
         await pool.query(`
-            UPDATE members SET balance = balance + (
-                SELECT COALESCE(SUM(total_amount), 0) * 0.05 FROM bets WHERE bets.member_username = members.username AND status = 'ไม่ถูกรางวัล'
+            UPDATE users SET balance = COALESCE(balance, 0) + (
+                SELECT COALESCE(SUM(total_amount), 0) * 0.05 FROM bets WHERE bets.member_username = users.username AND status = 'ไม่ถูกรางวัล'
             )
         `);
         res.json({ success: true, message: 'แจกคืนยอดเสีย 5% ให้สมาชิกทั้งหมดเรียบร้อยแล้ว!' });
@@ -415,7 +406,7 @@ app.post('/api/admin/cancel-bet', async (req, res) => {
         const bet = betRes.rows[0];
 
         if (bet.status === 'รอผลรางวัล') {
-            await pool.query('UPDATE members SET balance = balance + $1 WHERE username = $2', [bet.total_amount, bet.member_username]);
+            await pool.query('UPDATE users SET balance = COALESCE(balance, 0) + $1 WHERE username = $2', [bet.total_amount, bet.member_username]);
             await pool.query("UPDATE bets SET status = 'ยกเลิก' WHERE id = $1", [betId]);
             res.json({ success: true, message: 'ยกเลิกโพยและคืนเงินสำเร็จ' });
         } else {
