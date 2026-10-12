@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>Master Admin Control Panel - borndee VIP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+    </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen p-6 font-sans pb-28">
+    <div id="toast-container" class="fixed top-6 right-6 z-50 space-y-2 pointer-events-none"></div>
+
+    <div class="max-w-7xl mx-auto space-y-6 animate-fade-in">
+        <!-- Header -->
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl flex justify-between items-center shadow-xl">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-purple-500/10 border border-purple-500/30 rounded-2xl flex items-center justify-center text-purple-400 font-bold text-lg">👑</div>
+                <div>
+                    <h1 class="text-lg font-bold text-purple-400">Master Control Center — borndee VIP Enterprise</h1>
+                    <p class="text-xs text-slate-400">ระบบบริหารจัดการธนาคาร, ตั้งค่าอัตราจ่าย, ฝาก-ถอน, ตรวจโพย และออกผลรางวัล</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="/" class="bg-slate-800 hover:bg-slate-700 px-3.5 py-2 rounded-xl text-xs font-medium text-emerald-300 border border-slate-700 transition">หน้าเมมเบอร์</a>
+                <a href="/agent" class="bg-slate-800 hover:bg-slate-700 px-3.5 py-2 rounded-xl text-xs font-medium text-amber-300 border border-slate-700 transition">หน้าเอเจนต์</a>
+                <a href="/login" class="bg-rose-500/10 hover:bg-rose-500/20 px-3.5 py-2 rounded-xl text-xs font-medium text-rose-400 border border-rose-500/30 transition">LOGOUT</a>
+            </div>
+        </div>
+
+        <!-- งบการเงินภาพรวม -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl shadow-lg space-y-1">
+                <span class="text-xs text-slate-400">💰 ยอดขายรวมทั้งหมด</span>
+                <p id="total-sales" class="text-2xl font-black text-cyan-400">0.00 ฿</p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl shadow-lg space-y-1">
+                <span class="text-xs text-slate-400">💸 ยอดจ่ายรางวัลรวม</span>
+                <p id="total-payout" class="text-2xl font-black text-rose-400">0.00 ฿</p>
+            </div>
+            <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl shadow-lg space-y-1">
+                <span class="text-xs text-slate-400">📈 กำไรสุทธิระบบ (Net Profit)</span>
+                <p id="net-profit" class="text-2xl font-black text-emerald-400">0.00 ฿</p>
+            </div>
+        </div>
+
+        <!-- 1. ตั้งค่าอัตราจ่าย & วงเงินสูงสุด + สวิตช์เปิด/ปิดหวย -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-xl">
+                <h2 class="text-sm font-bold text-amber-300 border-b border-slate-800 pb-3">⚙️ ตั้งค่าอัตราจ่าย & วงเงินรับแทงสูงสุด</h2>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="text-[11px] text-slate-400">อัตราจ่าย 3 ตัว:</label>
+                        <input type="number" id="cfg-rate3d" placeholder="850" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-xs text-amber-300 font-bold focus:outline-none mt-1">
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-slate-400">อัตราจ่าย 2 ตัว:</label>
+                        <input type="number" id="cfg-rate2d" placeholder="90" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-xs text-amber-300 font-bold focus:outline-none mt-1">
+                    </div>
+                    <div>
+                        <label class="text-[11px] text-slate-400">แทงสูงสุด/รายการ:</label>
+                        <input type="number" id="cfg-maxbet" placeholder="2000" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-xs text-amber-300 font-bold focus:outline-none mt-1">
+                    </div>
+                </div>
+                <button onclick="saveSystemSettings()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl text-xs transition">
+                    💾 บันทึกการตั้งค่าระบบ
+                </button>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-xl flex flex-col justify-between">
+                <div>
+                    <h2 class="text-sm font-bold text-cyan-300 border-b border-slate-800 pb-3">🕒 สวิตช์เปิด - ปิดรับแทงหวยลาว</h2>
+                    <p class="text-xs text-slate-400 mt-2">สั่งเปิดหรือปิดรับแทงหวยลาวประจำวันแบบเรียลไทม์</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="toggleLottery(true)" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-2xl text-xs transition">🟢 เปิดรับแทง</button>
+                    <button onclick="toggleLottery(false)" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 rounded-2xl text-xs transition">🔴 ปิดรับแทง</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. บัญชีธนาคารรับฝากของเว็บ -->
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-xl">
+            <h2 class="text-sm font-bold text-blue-400 border-b border-slate-800 pb-3">🏦 จัดการบัญชีธนาคารของเว็บ (Bank Accounts)</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <input type="text" id="bank-name" placeholder="ชื่อธนาคาร (เช่น กสิกรไทย)" class="bg-slate-950 border border-slate-800 p-3 rounded-2xl text-xs text-white focus:outline-none">
+                <input type="text" id="bank-acc-num" placeholder="เลขบัญชี" class="bg-slate-950 border border-slate-800 p-3 rounded-2xl text-xs text-white focus:outline-none">
+                <input type="text" id="bank-acc-name" placeholder="ชื่อบัญชี" class="bg-slate-950 border border-slate-800 p-3 rounded-2xl text-xs text-white focus:outline-none">
+                <button onclick="addBankAccount()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-2xl text-xs transition">+ เพิ่มบัญชี</button>
+            </div>
+            <div id="bank-list" class="flex flex-wrap gap-2 pt-2">
+                <span class="text-xs text-slate-500">กำลังโหลดบัญชีธนาคาร...</span>
+            </div>
+        </div>
+
+        <!-- 3. คิวอนุมัติ ฝาก-ถอน -->
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-xl">
+            <h2 class="text-sm font-bold text-amber-300 border-b border-slate-800 pb-3">📥 คิวแจ้งฝาก - ถอนเงินออโต้</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs text-left">
+                    <thead class="bg-slate-950 text-slate-400 uppercase">
+                        <tr>
+                            <th class="p-3 rounded-l-xl">ผู้ใช้งาน</th>
+                            <th class="p-3">ประเภท</th>
+                            <th class="p-3">จำนวนเงิน</th>
+                            <th class="p-3">สถานะ</th>
+                            <th class="p-3 rounded-r-xl text-right">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tx-table" class="divide-y divide-slate-800">
+                        <tr><td colspan="5" class="p-4 text-center text-slate-500">กำลังโหลดข้อมูล...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 4. ควบคุมออกผลรางวัล & แจกคืนยอดเสีย -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-xl">
+                <h2 class="text-sm font-bold text-amber-300 border-b border-slate-800 pb-3">🎯 ออกผลรางวัลอัตโนมัติ</h2>
+                <button onclick="triggerAutoDraw()" class="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 text-slate-950 font-black py-3.5 rounded-2xl shadow-lg text-xs transition">
+                    🎲 สุ่มออกผลรางวัลหวยลาวงวดนี้
+                </button>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-xl">
+                <h2 class="text-sm font-bold text-cyan-300 border-b border-slate-800 pb-3">🎁 แจกโบนัสคืนยอดเสีย (Cashback 5%)</h2>
+                <button onclick="triggerCashback()" class="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 text-slate-950 font-black py-3.5 rounded-2xl shadow-lg text-xs transition">
+                    💸 แจกคืนยอดเสีย 5% ให้สมาชิกทั้งหมด
+                </button>
+            </div>
+        </div>
+
+        <!-- 5. เลขอั้น & ประกาศหน้าเว็บ -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-xl">
+                <h2 class="text-sm font-bold text-rose-400 border-b border-slate-800 pb-3">🚫 ตั้งค่าเลขอั้น / เลขเต็ม</h2>
+                <div class="flex gap-2">
+                    <input type="text" id="block-num" placeholder="เลข เช่น 78" class="flex-1 bg-slate-950 border border-slate-800 p-3 rounded-2xl text-xs text-amber-300 font-bold focus:outline-none">
+                    <select id="block-type" class="bg-slate-950 border border-slate-800 p-3 rounded-2xl text-xs text-white font-bold focus:outline-none">
+                        <option value="ปิดรับ">ปิดรับ</option>
+                        <option value="อั้นจ่ายครึ่ง">อั้นจ่ายครึ่ง</option>
+                    </select>
+                    <button onclick="saveBlockedNumber()" class="bg-rose-600 hover:bg-rose-500 text-white font-bold px-4 py-3 rounded-2xl text-xs transition">บันทึก</button>
+                </div>
+            </div>
+
+            <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-xl">
+                <h2 class="text-sm font-bold text-purple-300 border-b border-slate-800 pb-3">📢 ประกาศข้อความหน้าเว็บ</h2>
+                <div class="flex gap-2">
+                    <input type="text" id="announcement-msg" placeholder="ข้อความประกาศ..." class="flex-1 bg-slate-950 border border-slate-800 p-3 rounded-2xl text-xs text-white focus:outline-none">
+                    <button onclick="postAnnouncement()" class="bg-purple-600 hover:bg-purple-500 text-white font-bold px-5 py-3 rounded-2xl text-xs transition">เผยแพร่</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 6. ตรวจสอบโพยทั้งหมด -->
+        <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-xl">
+            <h2 class="text-sm font-bold text-rose-400 border-b border-slate-800 pb-3">🔍 ตรวจสอบโพยทั้งหมดในระบบ (Global Audit)</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs text-left">
+                    <thead class="bg-slate-950 text-slate-400 uppercase">
+                        <tr>
+                            <th class="p-3 rounded-l-xl">ID</th>
+                            <th class="p-3">สมาชิก</th>
+                            <th class="p-3">ประเภท</th>
+                            <th class="p-3">เลข</th>
+                            <th class="p-3">ยอดแทง</th>
+                            <th class="p-3">สถานะ</th>
+                            <th class="p-3 rounded-r-xl text-right">ดำเนินการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bets-table" class="divide-y divide-slate-800">
+                        <tr><td colspan="7" class="p-4 text-center text-slate-500">กำลังโหลดโพย...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `${type === 'success' ? 'bg-emerald-500 text-slate-950' : 'bg-rose-500 text-white'} px-5 py-3 rounded-2xl text-xs font-bold shadow-xl border border-emerald-400`;
+            toast.innerText = `${type === 'success' ? '🍀' : '⚠️'} ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        async function loadAdminData() {
+            const res = await fetch('/api/admin/all-data');
+            const data = await res.json();
+
+            // โหลดงบการเงิน
+            const stateRes = await fetch('/api/state');
+            const stateData = await stateRes.json();
+            if(stateData.financial) {
+                document.getElementById('total-sales').innerText = `${stateData.financial.totalSales.toLocaleString()} ฿`;
+                document.getElementById('total-payout').innerText = `${stateData.financial.totalPayout.toLocaleString()} ฿`;
+                const net = stateData.financial.netProfit;
+                const netEl = document.getElementById('net-profit');
+                netEl.innerText = `${net.toLocaleString()} ฿`;
+                netEl.className = `text-2xl font-black ${net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`;
+            }
+
+            // โหลดตั้งค่าระบบ
+            if(data.settings) {
+                document.getElementById('cfg-rate3d').value = data.settings.rate_3d || 850;
+                document.getElementById('cfg-rate2d').value = data.settings.rate_2d || 90;
+                document.getElementById('cfg-maxbet').value = data.settings.max_bet_per_num || 2000;
+            }
+
+            // โหลดบัญชีธนาคาร
+            const bankBox = document.getElementById('bank-list');
+            bankBox.innerHTML = '';
+            if(data.banks.length === 0) {
+                bankBox.innerHTML = `<span class="text-xs text-slate-500">ยังไม่มีบัญชีธนาคาร</span>`;
+            } else {
+                data.banks.forEach(b => {
+                    bankBox.innerHTML += `
+                        <span class="bg-blue-500/20 text-blue-300 border border-blue-500/30 px-3 py-1.5 rounded-xl text-xs font-bold">
+                            🏦 ${b.bank_name}: ${b.account_number} (${b.account_name})
+                        </span>
+                    `;
+                });
+            }
+
+            // โหลดฝาก-ถอน
+            const txTable = document.getElementById('tx-table');
+            txTable.innerHTML = '';
+            if(data.transactions.length === 0) {
+                txTable.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-500">ไม่มีรายการแจ้งฝาก-ถอน</td></tr>`;
+            } else {
+                data.transactions.forEach(tx => {
+                    txTable.innerHTML += `
+                        <tr class="hover:bg-slate-800/50">
+                            <td class="p-3 font-bold text-amber-300">${tx.username}</td>
+                            <td class="p-3"><span class="${tx.type === 'ฝากเงิน' ? 'text-emerald-400' : 'text-rose-400'} font-bold">${tx.type}</span></td>
+                            <td class="p-3">${parseFloat(tx.amount).toLocaleString()} ฿</td>
+                            <td class="p-3"><span class="bg-amber-500/20 text-amber-300 px-2 py-1 rounded-lg">${tx.status}</span></td>
+                            <td class="p-3 text-right space-x-1">
+                                ${tx.status === 'รออนุมัติ' ? `
+                                    <button onclick="handleTx(${tx.id}, 'อนุมัติ')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 rounded-lg font-bold">อนุมัติ</button>
+                                    <button onclick="handleTx(${tx.id}, 'ปฏิเสธ')" class="bg-rose-600 hover:bg-rose-500 text-white px-3 py-1 rounded-lg font-bold">ปฏิเสธ</button>
+                                ` : '<span class="text-slate-500">เสร็จสิ้น</span>'}
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+
+            // โหลดโพยทั้งหมด
+            const betsTable = document.getElementById('bets-table');
+            betsTable.innerHTML = '';
+            if(data.allBets.length === 0) {
+                betsTable.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">ไม่มีโพยในระบบ</td></tr>`;
+            } else {
+                data.allBets.forEach(bet => {
+                    betsTable.innerHTML += `
+                        <tr class="hover:bg-slate-800/50">
+                            <td class="p-3 font-mono text-slate-400">#${bet.id}</td>
+                            <td class="p-3 font-bold text-amber-300">${bet.member_username}</td>
+                            <td class="p-3">${bet.bet_type}</td>
+                            <td class="p-3 font-bold text-cyan-300">${bet.original_number}</td>
+                            <td class="p-3">${parseFloat(bet.total_amount).toLocaleString()} ฿</td>
+                            <td class="p-3"><span class="text-amber-400">${bet.status}</span></td>
+                            <td class="p-3 text-right">
+                                ${bet.status === 'รอผลรางวัล' ? `
+                                    <button onclick="cancelBet(${bet.id})" class="bg-rose-600 hover:bg-rose-500 text-white px-2.5 py-1 rounded-lg font-bold text-[10px]">ยกเลิกโพย</button>
+                                ` : '<span class="text-slate-500">-</span>'}
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+        }
+
+        async function saveSystemSettings() {
+            const rate3d = document.getElementById('cfg-rate3d').value;
+            const rate2d = document.getElementById('cfg-rate2d').value;
+            const maxBet = document.getElementById('cfg-maxbet').value;
+
+            const res = await fetch('/api/admin/save-settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rate3d, rate2d, maxBet })
+            });
+            const data = await res.json();
+            if(data.success) showToast('บันทึกการตั้งค่าสำเร็จ!');
+        }
+
+        async function toggleLottery(isOpen) {
+            const res = await fetch('/api/admin/toggle-lottery', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ isOpen })
+            });
+            const data = await res.json();
+            if(data.success) showToast(data.message);
+        }
+
+        async function addBankAccount() {
+            const bankName = document.getElementById('bank-name').value;
+            const accountNumber = document.getElementById('bank-acc-num').value;
+            const accountName = document.getElementById('bank-acc-name').value;
+
+            if(!bankName || !accountNumber) return showToast('กรุณากรอกข้อมูลธนาคารให้ครบ', 'error');
+
+            const res = await fetch('/api/admin/add-bank', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bankName, accountNumber, accountName })
+            });
+            const data = await res.json();
+            if(data.success) {
+                showToast('เพิ่มบัญชีสำเร็จ!');
+                loadAdminData();
+            }
+        }
+
+        async function handleTx(txId, action) {
+            const res = await fetch('/api/admin/handle-tx', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ txId, action })
+            });
+            const data = await res.json();
+            if(data.success) {
+                showToast('ทำรายการสำเร็จ');
+                loadAdminData();
+            }
+        }
+
+        async function triggerAutoDraw() {
+            if(!confirm('ยืนยันสุ่มออกผลรางวัลหวยลาวงวดนี้ใช่หรือไม่?')) return;
+            const res = await fetch('/api/admin/auto-draw', { method: 'POST' });
+            const data = await res.json();
+            if(data.success) {
+                showToast(data.message);
+                loadAdminData();
+            }
+        }
+
+        async function triggerCashback() {
+            if(!confirm('ยืนยันแจกคืนยอดเสีย 5% ให้สมาชิกทั้งหมดใช่หรือไม่?')) return;
+            const res = await fetch('/api/admin/give-cashback', { method: 'POST' });
+            const data = await res.json();
+            if(data.success) {
+                showToast(data.message);
+                loadAdminData();
+            }
+        }
+
+        async function saveBlockedNumber() {
+            const number = document.getElementById('block-num').value.trim();
+            const restrictionType = document.getElementById('block-type').value;
+
+            if(!number) return showToast('กรุณากรอกหมายเลข', 'error');
+
+            const res = await fetch('/api/admin/block-number', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ number, restrictionType })
+            });
+            const data = await res.json();
+            if(data.success) {
+                showToast(data.message);
+                document.getElementById('block-num').value = '';
+            }
+        }
+
+        async function postAnnouncement() {
+            const message = document.getElementById('announcement-msg').value.trim();
+            if(!message) return showToast('กรุณากรอกข้อความประกาศ', 'error');
+
+            const res = await fetch('/api/admin/announcement', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message })
+            });
+            const data = await res.json();
+            if(data.success) {
+                showToast('เผยแพร่ประกาศสำเร็จ!');
+                document.getElementById('announcement-msg').value = '';
+            }
+        }
+
+        async function cancelBet(betId) {
+            if(!confirm(`ยืนยันยกเลิกโพย #${betId} และคืนเงินให้สมาชิกใช่หรือไม่?`)) return;
+            const res = await fetch('/api/admin/cancel-bet', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ betId })
+            });
+            const data = await res.json();
+            if(data.success) {
+                showToast('ยกเลิกโพยสำเร็จ!');
+                loadAdminData();
+            }
+        }
+
+        loadAdminData();
+    </script>
+</body>
+</html>

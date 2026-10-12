@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>หน้าเอเจนต์ - จัดการสมาชิก</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen p-6 font-sans">
+    <div class="max-w-4xl mx-auto space-y-6 animate-fade-in">
+        <div class="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-950 border border-slate-800 p-5 rounded-3xl flex justify-between items-center shadow-xl">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center text-amber-400 font-bold text-lg">
+                    🛡️
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-amber-400 tracking-wide">เอเจนต์พอร์ทัล — จัดการสมาชิก</h1>
+                    <p class="text-xs text-slate-400">เปิดบัญชีและเติมเครดิตสมาชิกในสายงาน</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="/" class="bg-slate-800 hover:bg-slate-700 px-3.5 py-2 rounded-xl text-xs font-medium text-emerald-300 border border-slate-700/50 transition">หน้าเมมเบอร์</a>
+                <a href="/admin" class="bg-slate-800 hover:bg-slate-700 px-3.5 py-2 rounded-xl text-xs font-medium text-purple-300 border border-slate-700/50 transition">หน้าแอดมิน</a>
+                <a href="/login" class="bg-rose-500/10 hover:bg-rose-500/20 px-3.5 py-2 rounded-xl text-xs font-medium text-rose-400 border border-rose-500/30 transition">ออกจากระบบ</a>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-slate-900/90 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-xl">
+                <h2 class="text-sm font-bold text-amber-300 border-b border-slate-800 pb-3">➕ เปิดบัญชีเมมเบอร์ใหม่</h2>
+                <div>
+                    <label class="text-xs text-slate-400 font-medium">ยูสเซอร์เนม:</label>
+                    <input type="text" id="ag-user" placeholder="กรอกยูสเซอร์" class="w-full bg-slate-950 border border-slate-800 p-3.5 rounded-2xl text-sm mt-1 focus:outline-none">
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400 font-medium">เครดิตเริ่มต้น:</label>
+                    <input type="number" id="ag-bal" value="1000" class="w-full bg-slate-950 border border-slate-800 p-3.5 rounded-2xl text-sm mt-1 focus:outline-none">
+                </div>
+                <button onclick="createMember()" class="w-full bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-bold py-3.5 rounded-2xl shadow-lg transition">
+                    สร้างบัญชีสมาชิก
+                </button>
+            </div>
+
+            <div class="bg-slate-900/90 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-xl">
+                <h2 class="text-sm font-bold text-cyan-300 border-b border-slate-800 pb-3">💸 เติมเครดิตให้สมาชิก</h2>
+                <div>
+                    <label class="text-xs text-slate-400 font-medium">เลือกสมาชิก:</label>
+                    <select id="topup-member" class="w-full bg-slate-950 border border-slate-800 p-3.5 rounded-2xl text-sm mt-1 focus:outline-none"></select>
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400 font-medium">จำนวนเงิน:</label>
+                    <input type="number" id="topup-amt" value="500" class="w-full bg-slate-950 border border-slate-800 p-3.5 rounded-2xl text-sm mt-1 focus:outline-none">
+                </div>
+                <button onclick="topupMember()" class="w-full bg-gradient-to-r from-cyan-400 to-blue-500 hover:from-cyan-300 hover:to-blue-400 text-slate-950 font-bold py-3.5 rounded-2xl shadow-lg transition">
+                    ยืนยันเติมเครดิต
+                </button>
+            </div>
+        </div>
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>หน้าเอเจนต์ - borndee Agent Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-white min-h-screen p-6 font-sans">
+    <div class="max-w-5xl mx-auto space-y-6">
+        <!-- Header -->
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl flex justify-between items-center">
+            <h1 class="text-lg font-bold text-amber-400">🛡️ เอเจนต์พอร์ทัล — บริหารสายงานครบวงจร</h1>
+            <a href="/" class="bg-slate-800 px-3.5 py-2 rounded-xl text-xs font-medium text-emerald-300">หน้าเมมเบอร์</a>
+        </div>
+
+        <!-- Affiliate / ลิงก์ชวนเพื่อน -->
+        <div class="bg-slate-900/90 border border-slate-800 p-5 rounded-3xl flex justify-between items-center">
+            <div>
+                <span class="text-xs text-slate-400">🔗 ลิงก์สมัครสมาชิกสำหรับเอเจนต์ (Affiliate Link)</span>
+                <p id="aff-link" class="text-xs font-mono text-cyan-300 mt-1">https://borndee.com/register?ref=agent01</p>
+            </div>
+            <button onclick="copyAffLink()" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-4 py-2 rounded-xl text-xs">คัดลอกลิงก์</button>
+        </div>
+
+        <!-- จัดการสมาชิกในสายงาน -->
+        <div class="bg-slate-900/90 border border-slate-800 p-6 rounded-3xl space-y-4">
+            <h2 class="text-sm font-bold text-amber-300 border-b border-slate-800 pb-3">👥 รายชื่อสมาชิกในสายงาน (จัดการการเงิน / ระงับบัญชี)</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm">
+                    <thead>
+                        <tr class="text-slate-400 border-b border-slate-800 text-xs">
+                            <th class="pb-3">ยูสเซอร์</th>
+                            <th class="pb-3 text-right">ยอดเครดิต</th>
+                            <th class="pb-3 text-center">สถานะบัญชี</th>
+                            <th class="pb-3 text-center">การกระทำ (เติม/ดึงคืน/ระงับ)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="member-agent-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function copyAffLink() {
+            navigator.clipboard.writeText(document.getElementById('aff-link').innerText);
+            alert('คัดลอกลิงก์แนะนำเรียบร้อย!');
+        }
+
+        async function loadData() {
+            const res = await fetch('/api/state');
+            const data = await res.json();
+
+            const tbody = document.getElementById('member-agent-list');
+            tbody.innerHTML = '';
+            data.members.forEach(m => {
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-800/50 text-xs">
+                        <td class="py-3 text-cyan-300 font-bold">${m.username}</td>
+                        <td class="py-3 text-right text-emerald-400 font-bold">${parseFloat(m.balance).toLocaleString()} ฿</td>
+                        <td class="py-3 text-center">
+                            <span class="px-2 py-1 rounded-full text-[10px] ${m.status === 'suspended' ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'}">${m.status || 'ปกติ'}</span>
+                        </td>
+                        <td class="py-3 text-center flex justify-center gap-2">
+                            <button onclick="topup(${m.id})" class="bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold px-2.5 py-1 rounded-lg text-[10px]">เติมเครดิต</button>
+                            <button onclick="deduct(${m.id})" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold px-2.5 py-1 rounded-lg text-[10px]">ดึงคืน</button>
+                            <button onclick="toggleStatus(${m.id}, '${m.status === 'suspended' ? 'active' : 'suspended'}')" class="bg-rose-600 hover:bg-rose-500 text-white font-bold px-2.5 py-1 rounded-lg text-[10px]">
+                                ${m.status === 'suspended' ? 'ปลดระงับ' : 'ระงับ'}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function topup(memberId) {
+            const amount = prompt('กรอกจำนวนเงินที่ต้องการเติม:');
+            if(!amount) return;
+            const res = await fetch('/api/agent/topup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ memberId, amount })
+            });
+            const data = await res.json();
+            if(data.success) { alert('เติมเครดิตสำเร็จ'); loadData(); }
+        }
+
+        async function deduct(memberId) {
+            const amount = prompt('กรอกจำนวนเงินที่ต้องการดึงคืน:');
+            if(!amount) return;
+            const res = await fetch('/api/agent/deduct', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ memberId, amount })
+            });
+            const data = await res.json();
+            if(data.success) { alert('ดึงเครดิตคืนสำเร็จ'); loadData(); }
+            else { alert(data.message); }
+        }
+
+        async function toggleStatus(memberId, status) {
+            const res = await fetch('/api/agent/toggle-user-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ memberId, status })
+            });
+            const data = await res.json();
+            if(data.success) { alert(data.message); loadData(); }
+        }
+
+        loadData();
+    </script>
+</body>
+</html>
+        <div class="bg-slate-900/90 border border-slate-800 p-6 rounded-3xl space-y-4 shadow-xl">
+            <h2 class="text-sm font-bold text-yellow-300 border-b border-slate-800 pb-3">👥 รายชื่อสมาชิกทั้งหมดในระบบ</h2>
+            <div id="member-list" class="space-y-2.5 max-h-64 overflow-y-auto pr-1"></div>
+        </div>
+    </div>
+
+    <script>
+        async function loadData() {
+            const res = await fetch('/api/state');
+            const data = await res.json();
+            const mList = document.getElementById('member-list');
+            const topupSel = document.getElementById('topup-member');
+            mList.innerHTML = '';
+            topupSel.innerHTML = '';
+
+            data.members.forEach(m => {
+                topupSel.innerHTML += `<option value="${m.id}">${m.username}</option>`;
+                mList.innerHTML += `
+                    <div class="flex justify-between items-center bg-slate-950 p-3.5 rounded-2xl border border-slate-800 text-xs">
+                        <span class="font-bold text-cyan-300 text-sm">${m.username}</span>
+                        <span class="text-emerald-400 font-bold text-sm">${parseFloat(m.balance).toLocaleString()} ฿</span>
+                    </div>
+                `;
+            });
+        }
+
+        async function createMember() {
+            const username = document.getElementById('ag-user').value;
+            const balance = document.getElementById('ag-bal').value;
+            if(!username) return alert('กรุณากรอกยูสเซอร์');
+
+            const res = await fetch('/api/agent/create-member', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, balance })
+            });
+            const data = await res.json();
+            if(data.success) {
+                document.getElementById('ag-user').value = '';
+                loadData();
+                alert('สร้างบัญชีสำเร็จ!');
+            } else {
+                alert(data.error);
+            }
+        }
+
+        async function topupMember() {
+            const memberId = document.getElementById('topup-member').value;
+            const amount = document.getElementById('topup-amt').value;
+
+            const res = await fetch('/api/agent/topup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ memberId, amount })
+            });
+            const data = await res.json();
+            if(data.success) {
+                loadData();
+                alert('เติมเครดิตสำเร็จ!');
+            }
+        }
+        loadData();
+    </script>
+</body>
+</html>

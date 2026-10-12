@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <title>หน้าเมมเบอร์ - LAO LOTTO (Borndee)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 font-sans pb-28">
+    <div id="toast-container" class="fixed top-6 right-6 z-50 space-y-2 pointer-events-none"></div>
+
+    <div class="max-w-5xl mx-auto space-y-4 animate-fade-in">
+        <!-- Header -->
+        <div class="bg-slate-800 border border-slate-700 px-6 py-4 rounded-2xl flex justify-between items-center shadow-lg">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold">🎱</div>
+                <div>
+                    <h1 class="text-sm font-bold tracking-wide text-amber-400">LAO LOTTO — borndee VIP</h1>
+                    <p class="text-[10px] text-slate-400">ระบบส่งโพยเมมเบอร์ออโต้ระดับโปรดักชัน</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="/agent" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-300 transition">หน้าเอเยนต์</a>
+                <a href="/admin" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-xl text-xs font-bold text-purple-300 transition">หน้าแอดมิน</a>
+            </div>
+        </div>
+
+        <!-- แถบเลือกงวด & นับถอยหลัง -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="bg-slate-800 border border-slate-700 px-5 py-3 rounded-2xl text-xs font-bold text-amber-400 flex items-center gap-2">
+                <span>📅</span> งวดประจำวันที่: <span id="draw-date-text">12/10/2569</span>
+            </div>
+            <div class="bg-slate-800 border border-slate-700 px-5 py-3 rounded-2xl text-xs font-bold flex justify-between items-center">
+                <span class="text-slate-400">⏳ ปิดรับแทงใน:</span>
+                <span id="countdown-timer" class="text-amber-400 font-black tracking-wider">00:00:00</span>
+            </div>
+        </div>
+
+        <!-- ฟอร์มส่งโพย -->
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-6 shadow-xl">
+            <div class="space-y-1">
+                <label class="text-xs text-slate-400 font-bold">เลือกบัญชีผู้เล่น:</label>
+                <select id="sel-member" class="w-full bg-slate-900 border border-slate-700 p-3 rounded-xl text-xs text-amber-300 font-bold focus:outline-none"></select>
+            </div>
+
+            <!-- ประเภทการแทง -->
+            <div class="space-y-3">
+                <label class="text-xs text-slate-400 font-bold">วิธีการแทง/ประเภทหวย:</label>
+                <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 text-xs">
+                    <label class="bg-slate-900 border border-slate-700 p-3 rounded-xl flex items-center gap-2 cursor-pointer hover:border-amber-500 transition">
+                        <input type="radio" name="bet-mode" value="3 กลับ" checked class="accent-amber-500"> 3 กลับ
+                    </label>
+                    <label class="bg-slate-900 border border-slate-700 p-3 rounded-xl flex items-center gap-2 cursor-pointer hover:border-amber-500 transition">
+                        <input type="radio" name="bet-mode" value="3 โต๊ด" class="accent-amber-500"> 3 โต๊ด
+                    </label>
+                    <label class="bg-slate-900 border border-slate-700 p-3 rounded-xl flex items-center gap-2 cursor-pointer hover:border-amber-500 transition">
+                        <input type="radio" name="bet-mode" value="2 ตัวล่าง" class="accent-amber-500"> 2 ตัวล่าง
+                    </label>
+                    <label class="bg-slate-900 border border-slate-700 p-3 rounded-xl flex items-center gap-2 cursor-pointer hover:border-amber-500 transition">
+                        <input type="radio" name="bet-mode" value="วิ่งบน" class="accent-amber-500"> วิ่งบน
+                    </label>
+                    <label class="bg-slate-900 border border-slate-700 p-3 rounded-xl flex items-center gap-2 cursor-pointer hover:border-amber-500 transition">
+                        <input type="radio" name="bet-mode" value="วิ่งล่าง" class="accent-amber-500"> วิ่งล่าง
+                    </label>
+                    <label class="bg-slate-900 border border-slate-700 p-3 rounded-xl flex items-center gap-2 cursor-pointer hover:border-amber-500 transition">
+                        <input type="radio" name="bet-mode" value="19 ประตู" class="accent-amber-500"> 19 ประตู
+                    </label>
+                    <label class="bg-slate-900 border border-slate-700 p-3 rounded-xl flex items-center gap-2 cursor-pointer hover:border-amber-500 transition">
+                        <input type="radio" name="bet-mode" value="ปักหลัก" class="accent-amber-500"> ปักหลัก
+                    </label>
+                </div>
+            </div>
+
+            <!-- ช่องกรอกรายการเลขแบบ Auto-Permute -->
+            <div class="space-y-3 pt-3 border-t border-slate-700">
+                <span id="cart-count-label" class="text-xs text-slate-400 font-bold">จำนวน 0 รายการในตะกร้า</span>
+                <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                            <label class="text-[11px] text-slate-400 block mb-1">เลข (พิมพ์แล้วแตกอัตโนมัติ | กด Space/Enter เพื่อเพิ่ม):</label>
+                            <input type="text" id="input-num" oninput="previewAutoNumbers()" placeholder="เช่น 123" class="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm font-bold text-amber-400 focus:outline-none text-center">
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-slate-400 block mb-1">บน:</label>
+                            <input type="number" id="input-top" placeholder="0" class="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm focus:outline-none text-center">
+                        </div>
+                        <div>
+                            <label class="text-[11px] text-slate-400 block mb-1">โต๊ด / ล่าง:</label>
+                            <input type="number" id="input-bot" placeholder="0" class="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-sm focus:outline-none text-center">
+                        </div>
+                    </div>
+
+                    <!-- กล่องพรีวิวตัวเลข -->
+                    <div id="preview-box" class="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs space-y-1 hidden">
+                        <span class="text-amber-400 font-bold">🔁 ตัวเลขที่จะถูกเพิ่มอัตโนมัติ (<span id="preview-count">0</span> ตัว):</span>
+                        <div id="preview-numbers" class="text-cyan-300 font-mono tracking-wider break-all"></div>
+                    </div>
+
+                    <button onclick="addTempBet()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 rounded-xl text-xs transition">
+                        + เพิ่มรายการเข้าตะกร้า
+                    </button>
+                </div>
+            </div>
+
+            <!-- รายการที่อยู่ในตะกร้า -->
+            <div class="bg-slate-900 p-4 rounded-xl border border-slate-700 space-y-3">
+                <div class="flex items-center gap-2 text-xs font-bold text-cyan-300">
+                    <span>🇱🇦</span> รายการโพยรอดำเนินการส่ง
+                </div>
+                <div id="temp-list" class="text-xs text-slate-400 py-2 border-t border-slate-800 max-h-40 overflow-y-auto">
+                    ยังไม่มีรายการแทง
+                </div>
+            </div>
+
+            <!-- ปุ่มกดส่งโพย -->
+            <button onclick="submitFinalBet()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-4 rounded-2xl shadow-lg text-sm transition transform active:scale-95 duration-200">
+                🚀 ส่งโพย (ตรวจสอบเลขอั้น & ตัดเงินออโต้)
+            </button>
+        </div>
+
+        <!-- ผลรางวัลย้อนหลัง & แชร์โซเชียล -->
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-4 shadow-xl">
+            <h2 class="text-sm font-bold text-yellow-300 border-b border-slate-700 pb-3">🏆 ผลรางวัลหวยลาวย้อนหลัง</h2>
+            <div id="results-archive" class="space-y-2 text-xs">
+                <div class="text-slate-500">กำลังโหลดผลรางวัล...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Live Chat Widget -->
+    <div id="chat-widget" class="fixed bottom-6 right-6 z-50">
+        <button onclick="toggleChat()" class="bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 px-5 py-3 rounded-full font-bold shadow-2xl flex items-center gap-2 text-xs hover:scale-105 transition">
+            <span>💬</span> แชทสดซัพพอร์ต
+        </button>
+
+        <div id="chat-box" class="hidden absolute bottom-14 right-0 w-80 bg-slate-900 border border-slate-700 rounded-3xl shadow-2xl p-4 space-y-3">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                <span class="text-xs font-bold text-cyan-300">💬 ศูนย์ช่วยเหลือลูกค้า (Live Chat)</span>
+                <button onclick="toggleChat()" class="text-slate-400 hover:text-white font-bold text-xs">✕</button>
+            </div>
+            <div id="chat-messages" class="h-48 overflow-y-auto space-y-2 text-xs bg-slate-950 p-3 rounded-2xl border border-slate-800">
+                <div class="text-slate-500 text-center">เริ่มต้นสนทนากับเจ้าหน้าที่...</div>
+            </div>
+            <div class="flex gap-2">
+                <input type="text" id="chat-input" placeholder="พิมพ์ข้อความ..." class="flex-1 bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-xs focus:outline-none">
+                <button onclick="sendMessage()" class="bg-cyan-500 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-xs">ส่ง</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let cart = [];
+
+        // นับถอยหลังเวลาปิดรับ
+        function startCountdown() {
+            const timerEl = document.getElementById('countdown-timer');
+            setInterval(() => {
+                const now = new Date();
+                const target = new Date();
+                target.setHours(20, 0, 0, 0);
+                if(now > target) target.setDate(target.getDate() + 1);
+                
+                const diff = target - now;
+                const h = String(Math.floor((diff / (1000 * 60 * 60)) % 24)).padStart(2, '0');
+                const m = String(Math.floor((diff / 1000 / 60) % 60)).padStart(2, '0');
+                const s = String(Math.floor((diff / 1000) % 60)).padStart(2, '0');
+                timerEl.innerText = `${h}:${m}:${s}`;
+            }, 1000);
+        }
+        startCountdown();
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `${type === 'success' ? 'bg-emerald-500 text-slate-950' : 'bg-rose-500 text-white'} px-5 py-3 rounded-2xl text-xs font-bold shadow-xl border border-emerald-400`;
+            toast.innerText = `${type === 'success' ? '🍀' : '⚠️'} ${message}`;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        async function loadState() {
+            const res = await fetch('/api/state');
+            const data = await res.json();
+            
+            const sel = document.getElementById('sel-member');
+            sel.innerHTML = '';
+            if(data.members && data.members.length > 0) {
+                data.members.forEach(m => {
+                    sel.innerHTML += `<option value="${m.id}">${m.username} (กระเป๋า: ${parseFloat(m.balance).toLocaleString()} ฿)</option>`;
+                });
+            } else {
+                sel.innerHTML = `<option value="">ยังไม่มีบัญชีสมาชิก</option>`;
+            }
+
+            const resBox = document.getElementById('results-archive');
+            resBox.innerHTML = '';
+            if(!data.results || data.results.length === 0) {
+                resBox.innerHTML = '<div class="text-slate-500">ยังไม่มีประวัติผลรางวัล</div>';
+            } else {
+                data.results.forEach(r => {
+                    resBox.innerHTML += `
+                        <div class="bg-slate-900 p-3 rounded-xl border border-slate-700 flex justify-between items-center">
+                            <div>
+                                <span class="text-amber-400 font-bold">งวดวันที่: ${new Date(r.draw_date).toLocaleDateString()}</span>
+                                <p class="text-cyan-300 mt-1">4 ตัว: <strong class="text-white">${r.prize_4d}</strong> | 3 ตัว: <strong class="text-white">${r.prize_3d}</strong> | 2 ตัว: <strong class="text-white">${r.prize_2d}</strong></p>
+                            </div>
+                            <button onclick="shareResult('${r.prize_4d}', '${r.prize_3d}', '${r.prize_2d}')" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold">📤 แชร์ผลรางวัล</button>
+                        </div>
+                    `;
+                });
+            }
+        }
+        loadState();
+
+        function getExpandedNumbers(type, number) {
+            let results = [];
+            if (!number) return results;
+            
+            if (type === '3 กลับ' && number.length === 3) {
+                let arr = number.split('');
+                let perms = [];
+                let permute = (subArr, m = []) => {
+                    if (subArr.length === 0) perms.push(m.join(''));
+                    for (let i = 0; i < subArr.length; i++) {
+                        let curr = subArr.slice();
+                        let next = curr.splice(i, 1);
+                        permute(curr, m.concat(next));
+                    }
+                };
+                permute(arr);
+                results = [...new Set(perms)];
+            } else if (type === '19 ประตู' && number.length === 1) {
+                for (let i = 0; i <= 9; i++) {
+                    results.push(`${number}${i}`);
+                    if (`${i}${number}` !== `${number}${i}`) results.push(`${i}${number}`);
+                }
+                results = [...new Set(results)];
+            } else {
+                results.push(number);
+            }
+            return results;
+        }
+
+        function previewAutoNumbers() {
+            const num = document.getElementById('input-num').value;
+            const mode = document.querySelector('input[name="bet-mode"]:checked').value;
+            const previewBox = document.getElementById('preview-box');
+            const previewNumEl = document.getElementById('preview-numbers');
+            const previewCountEl = document.getElementById('preview-count');
+
+            if (!num || num.length < 1) {
+                previewBox.classList.add('hidden');
+                return;
+            }
+
+            const expanded = getExpandedNumbers(mode, num);
+            if (expanded.length > 0) {
+                previewBox.classList.remove('hidden');
+                previewNumEl.innerText = expanded.join(', ');
+                previewCountEl.innerText = expanded.length;
+            } else {
+                previewBox.classList.add('hidden');
+            }
+        }
+
+        document.getElementById('input-num').addEventListener('keydown', function(e) {
+            if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                addTempBet();
+            }
+        });
+
+        function addTempBet() {
+            const num = document.getElementById('input-num').value.trim();
+            const topAmt = parseFloat(document.getElementById('input-top').value) || 0;
+            const botAmt = parseFloat(document.getElementById('input-bot').value) || 0;
+            const mode = document.querySelector('input[name="bet-mode"]:checked').value;
+
+            if(!num) return showToast('กรุณากรอกหมายเลข', 'error');
+            if(topAmt <= 0 && botAmt <= 0) return showToast('กรุณากรอกราคา บน หรือ ล่าง/โต๊ด อย่างน้อย 1 ช่อง', 'error');
+
+            const expanded = getExpandedNumbers(mode, num);
+            expanded.forEach(n => {
+                cart.push({ mode, num: n, topAmt, botAmt });
+            });
+            
+            document.getElementById('input-num').value = '';
+            document.getElementById('input-top').value = '';
+            document.getElementById('input-bot').value = '';
+            document.getElementById('preview-box').classList.add('hidden');
+            renderCart();
+            showToast('เพิ่มรายการเข้าตะกร้าแล้ว');
+        }
+
+        function renderCart() {
+            const list = document.getElementById('temp-list');
+            document.getElementById('cart-count-label').innerText = `จำนวน ${cart.length} รายการในตะกร้า`;
+            
+            if(cart.length === 0) {
+                list.innerHTML = 'ยังไม่มีรายการแทง';
+                return;
+            }
+            list.innerHTML = '';
+            cart.forEach((item, index) => {
+                list.innerHTML += `
+                    <div class="flex justify-between items-center bg-slate-800 p-2.5 rounded-lg mb-2 text-xs">
+                        <span>[${item.mode}] เลข: <strong class="text-amber-400 font-bold">${item.num}</strong> (บน: ${item.topAmt} ฿ | ล่าง/โต๊ด: ${item.botAmt} ฿)</span>
+                        <button onclick="cart.splice(${index}, 1); renderCart();" class="text-rose-400 font-bold hover:text-rose-300">✕ ลบ</button>
+                    </div>
+                `;
+            });
+        }
+
+        async function submitFinalBet() {
+            if(cart.length === 0) return alert('กรุณาเพิ่มรายการแทงอย่างน้อย 1 รายการ');
+            const memberId = document.getElementById('sel-member').value;
+            if(!memberId) return alert('กรุณาเลือกบัญชีผู้เล่นก่อน');
+
+            for (let item of cart) {
+                let totalForThisItem = item.topAmt + item.botAmt;
+                const res = await fetch('/api/member/bet', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        memberId: memberId,
+                        betType: item.mode,
+                        number: item.num,
+                        amount: totalForThisItem
+                    })
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    showToast('เกิดข้อผิดพลาด: ' + data.message, 'error');
+                    return;
+                }
+            }
+
+            showToast('ส่งโพยหวยลาวสำเร็จ! ตัดเงินเรียบร้อย');
+            cart = [];
+            renderCart();
+            loadState();
+        }
+
+        function shareResult(r4, r3, r2) {
+            const text = `🎉 ผลรางวัลหวยลาว VIP\n- 4 ตัว: ${r4}\n- 3 ตัว: ${r3}\n- 2 ตัว: ${r2}\nแทงง่าย จ่ายจริงที่ borndee!`;
+            navigator.clipboard.writeText(text);
+            showToast('คัดลอกผลรางวัลสำหรับแชร์เรียบร้อย!');
+        }
+
+        function toggleChat() {
+            const box = document.getElementById('chat-box');
+            box.classList.toggle('hidden');
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('chat-input');
+            if(!input.value) return;
+            socket.emit('send_message', { sender: 'สมาชิก', message: input.value });
+            input.value = '';
+        }
+
+        socket.on('receive_message', (data) => {
+            const msgBox = document.getElementById('chat-messages');
+            msgBox.innerHTML += `<div class="p-1.5 rounded-lg bg-slate-900 border border-slate-800"><strong class="text-cyan-400">${data.sender}:</strong> ${data.message}</div>`;
+            msgBox.scrollTop = msgBox.scrollHeight;
+        });
+    </script>
+</body>
+</html>
