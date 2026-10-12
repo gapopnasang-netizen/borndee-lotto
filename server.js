@@ -15,12 +15,12 @@ app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ตั้งค่า Session
+// ตั้งค่า Session สำหรับจดจำการล็อกอินและยศผู้ใช้
 app.use(session({
     secret: 'borndee-lotto-secret-key',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: false } // เปลี่ยนเป็น true ถ้าใช้งานผ่าน HTTPS สมบูรณ์บน Production
+    cookie: { secure: false } // เปลี่ยนเป็น true ถ้าเปิดใช้งานผ่าน HTTPS สมบูรณ์แบบ
 }));
 
 const pool = new Pool({
@@ -60,6 +60,7 @@ function expandBetNumbers(type, number) {
 // MIDDLEWARE ตรวจสอบสิทธิ์ (Auth & Roles)
 // ==========================================
 
+// บังคับว่าต้อง Login แล้วเท่านั้น (ถ้ายังไม่ล็อกอิน ดีดไปหน้า /login.html ทันที)
 function requireAuth(req, res, next) {
     if (!req.session || !req.session.user) {
         return res.redirect('/login.html');
@@ -67,34 +68,39 @@ function requireAuth(req, res, next) {
     next();
 }
 
+// ตรวจสอบยศ (Role-Based Access Control)
 function requireRole(roles) {
     return (req, res, next) => {
         if (!req.session || !req.session.user) {
             return res.redirect('/login.html');
         }
         if (!roles.includes(req.session.user.role)) {
-            return res.status(403).send('<h2>403 Forbidden: คุณไม่มีสิทธิ์เข้าถึงหน้านี้ (สิทธิ์ไม่ถึง)</h2><a href="/">กลับหน้าหลัก</a>');
+            return res.status(403).send('<h2>403 Forbidden: คุณไม่มีสิทธิ์เข้าถึงหน้านี้</h2><a href="/">กลับหน้าหลัก</a>');
         }
         next();
     };
 }
 
 // ==========================================
-// ROUTES (หน้าเว็บหลัก & ป้องกันสิทธิ์)
+// ROUTES & SECURITY (เส้นทางหน้าเว็บ)
 // ==========================================
 
+// หน้าแรก (บังคับ Login: ถ้ายังไม่ล็อกอินจะเด้งไป /login.html ทันที)
 app.get('/', requireAuth, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// หน้า Agent (เฉพาะยศ agent และ admin เท่านั้น)
 app.get('/agent', requireRole(['agent', 'admin']), (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'agent.html'));
 });
 
+// หน้า Admin (เฉพาะยศ admin เท่านั้น)
 app.get('/admin', requireRole(['admin']), (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
+// หน้า Login (เปิดให้เข้าได้อิสระ)
 app.get('/login.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
@@ -104,7 +110,7 @@ app.get('/login', (req, res) => {
 });
 
 // ==========================================
-// API ENDPOINTS: AUTHENTICATION
+// API ENDPOINTS: AUTHENTICATION & LOGIN
 // ==========================================
 
 app.post('/api/login', async (req, res) => {
@@ -120,15 +126,20 @@ app.post('/api/login', async (req, res) => {
             return res.status(401).json({ success: false, message: 'รหัสผ่านไม่ถูกต้อง' });
         }
 
+        // บันทึกข้อมูลลง Session รวมถึง role (ยศ)
         req.session.user = {
             id: user.id,
             username: user.username,
-            role: user.role || 'member'
+            role: user.role || 'member' // ถ้าไม่มีค่า ให้ตั้งต้นเป็น member
         };
 
+        // กำหนดหน้าที่จะพาไปหลังล็อกอินสำเร็จตามยศ
         let redirectTo = '/';
-        if (user.role === 'admin') redirectTo = '/admin';
-        else if (user.role === 'agent') redirectTo = '/agent';
+        if (user.role === 'admin') {
+            redirectTo = '/admin';
+        } else if (user.role === 'agent') {
+            redirectTo = '/agent';
+        }
 
         res.json({ success: true, redirectTo });
     } catch (err) {
@@ -136,6 +147,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// API ออกจากระบบ (Logout)
 app.post('/api/logout', (req, res) => {
     req.session.destroy((err) => {
         if (err) return res.status(500).json({ success: false, message: 'ออกจากระบบไม่สำเร็จ' });
@@ -144,6 +156,7 @@ app.post('/api/logout', (req, res) => {
     });
 });
 
+// API เช็คข้อมูล User ปัจจุบัน
 app.get('/api/current-user', (req, res) => {
     if (!req.session || !req.session.user) {
         return res.status(401).json({ loggedIn: false });
@@ -152,7 +165,7 @@ app.get('/api/current-user', (req, res) => {
 });
 
 // ==========================================
-// API ENDPOINTS: SYSTEM & LOTTERY
+// API ENDPOINTS: SYSTEM & LOTTERY (ระบบเดิมทั้งหมด)
 // ==========================================
 
 app.get('/api/state', async (req, res) => {
