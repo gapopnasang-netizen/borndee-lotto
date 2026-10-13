@@ -107,7 +107,8 @@ app.get('/login', (req, res) => {
 // API ENDPOINTS: AUTHENTICATION & LOGIN
 // ==========================================
 
-app.post('/api/login', async (req, res) => {
+// รองรับทั้ง /api/login และ /api/auth/login
+app.post(['/api/login', '/api/auth/login'], async (req, res) => {
     const { username, password } = req.body;
     try {
         const { rows, error } = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
